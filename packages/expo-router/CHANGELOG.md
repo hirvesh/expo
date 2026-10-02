@@ -1,5 +1,15 @@
 # Changelog
 
+## 58.0.13
+
+### Patch Changes
+
+- [Internal] Bump `react-native-web` to `~0.21.3`. ([#50458](https://github.com/expo/expo/pull/50458) by [@hassankhan](https://github.com/hassankhan))
+- Updated dependencies. ([#50016](https://github.com/expo/expo/pull/50016), [#50458](https://github.com/expo/expo/pull/50458))
+  - expo-server@58.0.3
+  - @expo/log-box@58.0.9
+  - @expo/metro-runtime@58.0.11
+
 ## 58.0.12
 
 ### Patch Changes

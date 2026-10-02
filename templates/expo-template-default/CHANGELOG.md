@@ -1,5 +1,15 @@
 # expo-template-default
 
+## 58.0.12
+
+### Patch Changes
+
+- [Internal] Bump `react-native-web` to `~0.21.3`. ([#50458](https://github.com/expo/expo/pull/50458) by [@hassankhan](https://github.com/hassankhan))
+- Updated dependencies. ([#50458](https://github.com/expo/expo/pull/50458), [#50853](https://github.com/expo/expo/pull/50853))
+  - expo@58.0.3
+  - expo-router@58.0.13
+  - expo-splash-screen@58.0.5
+
 ## 58.0.11
 
 ### Patch Changes

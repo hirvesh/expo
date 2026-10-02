@@ -1,5 +1,11 @@
 # Changelog
 
+## 58.0.7
+
+### Patch Changes
+
+- Bump `lodash` to `^4.18.1`. ([#50391](https://github.com/expo/expo/pull/50391) by [@hassankhan](https://github.com/hassankhan))
+
 ## 58.0.6
 
 ### Patch Changes

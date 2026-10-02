@@ -1,5 +1,13 @@
 # Changelog
 
+## 58.0.8
+
+### Patch Changes
+
+- Preserve bundled, external, and inline stylesheet order across static and server rendering. ([#50016](https://github.com/expo/expo/pull/50016) by [@hassankhan](https://github.com/hassankhan))
+- Updated dependencies. ([#50391](https://github.com/expo/expo/pull/50391))
+  - @expo/config@58.0.2
+
 ## 58.0.7
 
 ### Patch Changes

@@ -1,5 +1,15 @@
 # Changelog
 
+## 58.0.8
+
+### Patch Changes
+
+- Bump `semver` to `^7.7.4`. ([#50391](https://github.com/expo/expo/pull/50391) by [@hassankhan](https://github.com/hassankhan))
+- Updated dependencies. ([#50391](https://github.com/expo/expo/pull/50391))
+  - @expo/config@58.0.2
+  - @expo/config-plugins@58.0.5
+  - @expo/image-utils@0.12.3
+
 ## 58.0.7
 
 ### Patch Changes
