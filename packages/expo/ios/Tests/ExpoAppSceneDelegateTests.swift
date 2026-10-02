@@ -201,7 +201,79 @@ struct ExpoAppSceneDelegateTests {
     let forwarder = ExpoAppSceneDelegate().forwarder
     #expect(forwarder.appDelegate() === UIApplication.shared.delegate as? ExpoAppDelegate)
   }
+
+  @Test
+  @MainActor
+  func `seeds isHeadless into the root properties`() {
+    // The root component has to receive a defined boolean on its first render, and
+    // react-native-firebase only rewrites `isHeadless` when the key is already present.
+    #expect(ExpoAppSceneDelegate.defaultInitialProperties["isHeadless"] as? Bool == false)
+  }
+
+  @Test
+  @MainActor
+  func `starts out not headless`() {
+    #expect(ExpoAppSceneDelegate().isHeadless == false)
+  }
+
+  @Test
+  @MainActor
+  func `records a headless launch without a mounted root view`() {
+    // The root view is gone by the time a background-launched scene disconnects, and the flag still
+    // has to be readable without one.
+    let sceneDelegate = ExpoAppSceneDelegate()
+    sceneDelegate.setHeadless(true)
+    #expect(sceneDelegate.isHeadless == true)
+  }
+
+  @Test
+  @MainActor
+  func `clears the headless flag when the scene enters the foreground`() throws {
+    // A background-launched app the user later opens is no longer headless.
+    let scene = try #require(UIApplication.shared.connectedScenes.first)
+    let sceneDelegate = ExpoAppSceneDelegate()
+    sceneDelegate.setHeadless(true)
+    sceneDelegate.sceneWillEnterForeground(scene)
+    #expect(sceneDelegate.isHeadless == false)
+  }
+
+  @Test
+  @MainActor
+  func `finds a nested root view within the search depth`() {
+    // `setRootView(_:toRootViewController:)` overrides are free to wrap the React root view, so the
+    // lookup can't assume it is the view controller's own view.
+    let root = UIView()
+    let middle = UIView()
+    let stub = StubRootView()
+    root.addSubview(middle)
+    middle.addSubview(stub)
+
+    #expect(ExpoAppSceneDelegate.firstView(ofType: StubRootView.self, in: root, maxDepth: 2) === stub)
+    #expect(ExpoAppSceneDelegate.firstView(ofType: StubRootView.self, in: stub, maxDepth: 0) === stub)
+  }
+
+  @Test
+  @MainActor
+  func `stops searching for a root view past the maximum depth`() {
+    // Bounded so a miss doesn't walk the whole mounted React tree.
+    let root = UIView()
+    let middle = UIView()
+    let stub = StubRootView()
+    root.addSubview(middle)
+    middle.addSubview(stub)
+
+    #expect(ExpoAppSceneDelegate.firstView(ofType: StubRootView.self, in: root, maxDepth: 1) == nil)
+  }
+
+  @Test
+  @MainActor
+  func `finds no root view without a view controller`() {
+    #expect(ExpoAppSceneDelegate.reactRootView(of: nil) == nil)
+  }
 }
+
+/// Stands in for `RCTSurfaceHostingProxyRootView`, which can't be built without a running surface.
+private final class StubRootView: UIView {}
 
 /// App delegate shaped like the SDK ≤ 57 templates, which call `RCTLinkingManager` from their own
 /// overrides. See `packages/expo-updates/e2e/fixtures/custom_init/AppDelegate.swift`.

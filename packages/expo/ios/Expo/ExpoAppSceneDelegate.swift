@@ -26,6 +26,39 @@ open class ExpoAppSceneDelegate: UIResponder, UIWindowSceneDelegate {
 
   let forwarder = SceneEventForwarder()
 
+  /// Whether this scene connected while the app was launched into the background.
+  public private(set) var isHeadless = false
+
+  /// `isHeadless` is seeded to `false` and resolved on the next main-queue turn by
+  /// `resolveHeadlessLaunch()`, which is the earliest point the two kinds of launch differ. The key
+  /// is seeded rather than added later so the root component always receives a defined boolean, and
+  /// so libraries that only update `isHeadless` when it is already present (react-native-firebase)
+  /// keep working.
+  static var defaultInitialProperties: [AnyHashable: Any] {
+    return ["isHeadless": false]
+  }
+
+  /**
+   Root properties handed to the React Native root component when the scene connects.
+
+   Override to add your own properties. Merge them into `super`'s so `isHeadless` keeps working:
+   ```swift
+   override func initialProperties(
+     for scene: UIScene,
+     connectionOptions: UIScene.ConnectionOptions
+   ) -> [AnyHashable: Any] {
+     return super.initialProperties(for: scene, connectionOptions: connectionOptions)
+       .merging(["myProp": true]) { _, new in new }
+   }
+   ```
+   */
+  open func initialProperties(
+    for scene: UIScene,
+    connectionOptions: UIScene.ConnectionOptions
+  ) -> [AnyHashable: Any] {
+    return Self.defaultInitialProperties
+  }
+
   open func scene(
     _ scene: UIScene,
     willConnectTo session: UISceneSession,
@@ -62,11 +95,14 @@ open class ExpoAppSceneDelegate: UIResponder, UIWindowSceneDelegate {
     factory.startReactNative(
       withModuleName: provider.reactNativeFactoryModuleName,
       in: window,
+      initialProperties: initialProperties(for: scene, connectionOptions: connectionOptions),
       launchOptions: Self.launchOptions(
         url: connectionOptions.urlContexts.first?.url,
         userActivity: browsingWebActivity
       )
     )
+
+    resolveHeadlessLaunch()
 
     // Deep links / universal links.
     connectionOptions.urlContexts.forEach {
@@ -96,6 +132,9 @@ open class ExpoAppSceneDelegate: UIResponder, UIWindowSceneDelegate {
   }
 
   open func sceneWillEnterForeground(_ scene: UIScene) {
+    // A background-launched app that the user later opens is no longer headless. Matches what
+    // react-native-firebase did from `UIApplicationWillEnterForegroundNotification`.
+    setHeadless(false)
     forwarder.willEnterForeground()
   }
 
@@ -120,6 +159,85 @@ open class ExpoAppSceneDelegate: UIResponder, UIWindowSceneDelegate {
     forwarder.perform(shortcutItem, completionHandler: completionHandler)
   }
 #endif
+}
+
+// MARK: - Headless launches
+
+@available(iOSApplicationExtension, unavailable)
+extension ExpoAppSceneDelegate {
+  /**
+   Resolves whether this launch was a background launch and republishes it as the `isHeadless` root
+   property.
+
+   Nothing available while the scene is connecting tells the two kinds of launch apart: under the
+   scene life cycle UIKit hands the app delegate empty launch options, and both a background launch
+   and a foreground launch reach `scene(_:willConnectTo:)` with the scene `.unattached` and the
+   application `.background`. They only diverge once UIKit has had a turn to activate the scene, so
+   the check is deferred to the next main-queue turn — a foreground launch is `.inactive` by then,
+   a background launch is still `.background`.
+
+   This lands long before the JS bundle finishes loading, so the root component sees the resolved
+   value on its first render.
+   */
+  @MainActor
+  func resolveHeadlessLaunch() {
+    DispatchQueue.main.async { [weak self] in
+      self?.setHeadless(UIApplication.shared.applicationState == .background)
+    }
+  }
+
+  /// Updates the root component's `isHeadless` property in place, the way an app that passed it
+  /// through `initialProperties` under the app-delegate life cycle used to.
+  @MainActor
+  func setHeadless(_ headless: Bool) {
+    guard headless != isHeadless else {
+      return
+    }
+    isHeadless = headless
+
+    guard let rootView = Self.reactRootView(of: window?.rootViewController) else {
+      return
+    }
+    var properties = rootView.appProperties ?? [:]
+    properties["isHeadless"] = headless
+    rootView.appProperties = properties
+  }
+
+  /// Finds the React Native root view the factory installed on the root view controller. The view
+  /// controller's own view is usually it, but `setRootView(_:toRootViewController:)` overrides are
+  /// free to nest it, so a few levels are searched before giving up.
+  @MainActor
+  static func reactRootView(
+    of rootViewController: UIViewController?,
+    maxDepth: Int = 3
+  ) -> RCTSurfaceHostingProxyRootView? {
+    guard let view = rootViewController?.view else {
+      return nil
+    }
+    return firstView(ofType: RCTSurfaceHostingProxyRootView.self, in: view, maxDepth: maxDepth)
+  }
+
+  /// Depth-first search for the closest view of the given type, bounded so a miss doesn't walk the
+  /// whole mounted React tree.
+  @MainActor
+  static func firstView<ViewType: UIView>(
+    ofType type: ViewType.Type,
+    in view: UIView,
+    maxDepth: Int
+  ) -> ViewType? {
+    if let match = view as? ViewType {
+      return match
+    }
+    guard maxDepth > 0 else {
+      return nil
+    }
+    for subview in view.subviews {
+      if let match = firstView(ofType: type, in: subview, maxDepth: maxDepth - 1) {
+        return match
+      }
+    }
+    return nil
+  }
 }
 
 // MARK: - Launch options

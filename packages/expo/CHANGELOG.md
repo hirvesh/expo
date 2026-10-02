@@ -6,8 +6,11 @@
 
 ### 🎉 New features
 
+- [iOS] Add an overridable `initialProperties(for:connectionOptions:)` to `ExpoAppSceneDelegate`, so apps can pass root properties to the React Native root component under the scene life cycle. ([#50069](https://github.com/expo/expo/pull/50069) by [@gabrieldonadel](https://github.com/gabrieldonadel))
+
 ### 🐛 Bug fixes
 
+- [iOS] Restore `isHeadless` under the scene life cycle by resolving background launches on the main queue turn after the scene connects, instead of from launch options that UIKit no longer populates. ([#50069](https://github.com/expo/expo/pull/50069) by [@gabrieldonadel](https://github.com/gabrieldonadel))
 - [Android] Request the `ACCESS_LOCAL_NETWORK` permission in debug builds on Android 17 before loading the app, so the dev server can be reached without `expo-dev-client`.
 
 ### 💡 Others
